@@ -133,7 +133,7 @@ class GRUDisaggregator(Disaggregator):
         """
 
         ixs = [m.index for m in meterchunks]
-        ix = mainchunk.index.interesection(*ixs)
+        ix = mainchunk.index.intersection(*ixs)
         mainchunk = mainchunk[ix]
         meterchunks = [m[ix] for m in meterchunks]
         num_of_batches = int(len(ix)/batch_size) - 1
@@ -333,10 +333,10 @@ class GRUDisaggregator(Disaggregator):
 
         # 1D Conv
         if self.stateful:
-            model.add(Convolution1D(16, 4, subsample_length=1, border_mode='same', activation='relu', batch_input_shape=(128,input_window,1)))
+            model.add(Conv1D(16, 4, activation="relu", padding="same", strides=1, batch_input_shape=(128,input_window,1)))
         else:
-            model.add(Convolution1D(16, 4, subsample_length=1, border_mode='same', activation='relu', input_shape=(input_window,1)))
-        model.add(Convolution1D(8, 4, subsample_length=1, border_mode='same', activation='relu'))
+            model.add(Conv1D(16, 4, activation="relu", padding="same", strides=1, input_shape=(input_window,1)))
+        model.add(Conv1D(8, 4, activation="relu", padding="same", strides=1))
 
         #Bi-directional LSTMs
         model.add(Bidirectional(GRU(128, return_sequences=True, stateful=self.stateful), merge_mode='concat'))
