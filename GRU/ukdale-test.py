@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from nilmtk import DataSet, TimeFrame, MeterGroup, HDFDataStore
 from nilmtk.elecmeter import ElecMeterID
-from grudisaggregator import GRUdisaggregator
+from grudisaggregator import GRUDisaggregator
 
 print("========== OPEN DATASETS ============")
 train = DataSet('../../Datasets/UKDALE/ukdale.h5')
@@ -20,11 +20,11 @@ train_elec = train.buildings[1].elec
 test_elec = test.buildings[5].elec
 
 meterkeys = ['kettle']
-mlist = [ElecMeterID(train_elec[m].instance(), building, train_elec[m].dataset()) for m in meterkeys]
+mlist = [ElecMeterID(train_elec[m].instance(), 1, train_elec[m].dataset()) for m in meterkeys]
 train_meter = train_elec.submeters().from_list(mlist)
 train_mains = train_elec.mains()
 test_mains = test_elec.mains()
-disagregator = GRUdisaggregator(train_meter, 64, stateful=False, gpu_mode=True)
+disagregator = GRUDisaggregator(train_meter, 64, stateful=False, gpu_mode=True)
 
 
 start = time.time()
