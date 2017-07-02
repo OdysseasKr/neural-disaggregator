@@ -10,35 +10,35 @@ from grudisaggregator import GRUdisaggregator
 
 print("========== OPEN DATASETS ============")
 train = DataSet('../../Datasets/REDD/redd.h5')
-test = DataSet('../../Datasets/REDD/redd.h5')
-
 train.set_window(end="30-4-2011")
+test = DataSet('../../Datasets/REDD/redd.h5')
 test.set_window(start="30-4-2011")
 
-train_elec = train.buildings[1].elec
-test_elec = test.buildings[1].elec
-
+train_building = 1
+test_building = 1
+sample_period = 6
+train_elec = train.buildings[train_building].elec
+test_elec = test.buildings[test_building].elec
 meterkeys = ['microwave']
-mlist = [ElecMeterID(train_elec[m].instance(), 1, 'REDD') for m in meterkeys]
-train_meter = train_elec.submeters().from_list(mlist)
-train_mains = train_elec.mains().all_meters()[0]
-test_mains = test_elec.mains().all_meters()[0]
-disagregator = GRUdisaggregator(train_meter, 128, gpu_mode=True)
 
+disagregator = GRUdisaggregator(len(meterkeys), 128, gpu_mode=True)
 
 start = time.time()
 print("========== TRAIN ============")
-# Note that we have given the sample period to downsample the data to 6 seconds
+mlist = [ElecMeterID(train_elec[m].instance(), train_building, 'REDD') for m in meterkeys]
+train_meter = train_elec.submeters().from_list(mlist)
+train_mains = train_elec.mains().all_meters()[0]
+test_mains = test_elec.mains().all_meters()[0]
 
-#disagregator.import_model("model-redd100a2-1gru.h5")
-disagregator.train(train_mains, train_meter, epochs=4, sample_period=6)
-disagregator.export_model("model-redd100a2-1gru.h5")
+disagregator.train(train_mains, train_meter, epochs=4, sample_period=sample_period)
 end = time.time()
 print("Train =", end-start, "seconds.")
 
 print("========== DISAGGREGATE ============")
 disag_filename = 'disag-out.h5'
 output = HDFDataStore(disag_filename, 'w')
-# Note that we have mentioned to disaggregate after converting to a sample period of 6 seconds
-disagregator.disaggregate(test_mains, output, sample_period=6)
+mlist = [ElecMeterID(test_elec[m].instance(), test_building, test_elec[m].dataset()) for m in meterkeys]
+out_metadata = test_elec.submeters().from_list(mlist)
+
+disagregator.disaggregate(test_mains, output, out_metadata, sample_period=sample_period)
 output.close()

@@ -26,7 +26,7 @@ class GRUDisaggregator(Disaggregator):
     Attributes
     ----------
     model : keras Sequential model
-    meter_metadata : metergroup of meters to be disaggregated
+    num_of_meters : number of meters to be infered from the model
     window_size : the size of window to use on the aggregate data
     mmax : the maximum value of the aggregate data
     stateful : true if the gru layers are stateful
@@ -36,7 +36,7 @@ class GRUDisaggregator(Disaggregator):
        the minimum length of an acceptable chunk
     '''
 
-    def __init__(self, metergroup, window_size, stateful=False, gpu_mode=False):
+    def __init__(self, num_of_meters, window_size, stateful=False, gpu_mode=False):
         '''Initialize disaggregator
         DOES NOT TAKE INTO ACCOUNT EXISTANCE OF VAMPIRE POWER
 
@@ -52,7 +52,7 @@ class GRUDisaggregator(Disaggregator):
         self.MIN_CHUNK_LENGTH = window_size
         self.gpu_mode = gpu_mode
         self.stateful = stateful
-        self.meter_metadata = metergroup
+        self.num_of_meters = num_of_meters
         self.model = self._create_model(self.window_size)
         print(self.model.summary())
 
@@ -152,7 +152,7 @@ class GRUDisaggregator(Disaggregator):
             print("\n")
 
 
-    def disaggregate(self, mains, output_datastore, **load_kwargs):
+    def disaggregate(self, mains, output_datastore, meter_metadata, **load_kwargs):
         '''Disaggregate mains according to the model learnt previously.
 
         Parameters
@@ -160,6 +160,7 @@ class GRUDisaggregator(Disaggregator):
         mains : nilmtk.ElecMeter
         output_datastore : instance of nilmtk.DataStore subclass
             For storing power predictions from disaggregation algorithmself.
+        meter_metadata : metadata for the produced output
         **load_kwargs : key word arguments
             Passed to `mains.power_series(**kwargs)`
         '''
@@ -188,7 +189,7 @@ class GRUDisaggregator(Disaggregator):
             appliance_power = self._denormalize(appliance_power, self.mmax)
 
             # Append prediction to output
-            for i,meter in enumerate(self.meter_metadata.all_meters()):
+            for i,meter in enumerate(meter_metadata.all_meters()):
                 data_is_available = True
                 cols = pd.MultiIndex.from_tuples([chunk.name])
                 meter_instance = meter.instance()
@@ -211,7 +212,7 @@ class GRUDisaggregator(Disaggregator):
                 measurement=measurement,
                 timeframes=timeframes,
                 building=mains.building(),
-                meters=self.meter_metadata.all_meters()
+                meters=meter_metadata.all_meters()
             )
 
     def disaggregate_chunk(self, mains):
@@ -344,7 +345,7 @@ class GRUDisaggregator(Disaggregator):
 
         # Fully Connected Layers
         Dropout(0.2)
-        model.add(Dense(len(self.meter_metadata.all_meters()), activation='linear'))
+        model.add(Dense(self.num_of_meters, activation='linear'))
 
         model.compile(loss='mse', optimizer='adam')
         plot_model(model, to_file='model.png', show_shapes=True)
