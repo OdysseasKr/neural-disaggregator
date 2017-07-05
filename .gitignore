@@ -1,2 +1,4 @@
 *.pyc
 *.png
+printout*.py
+*.h5
