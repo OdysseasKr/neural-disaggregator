@@ -19,9 +19,10 @@ train_elec = train.buildings[1].elec
 test_elec = test.buildings[2].elec
 
 train_meter = train_elec.submeters()['fridge']
+test_meter = test_elec.submeters()['fridge']
 train_mains = train_elec.mains()
 test_mains = test_elec.mains()
-dae = DAEDisaggregator(train_meter, 256, gpu_mode=True)
+dae = DAEDisaggregator(256, gpu_mode=True)
 
 
 start = time.time()
@@ -35,5 +36,5 @@ print("Train =", end-start, "seconds.")
 print("========== DISAGGREGATE ============")
 disag_filename = 'disag-out2.h5'
 output = HDFDataStore(disag_filename, 'w')
-dae .disaggregate(test_mains, output, sample_period=1)
+dae .disaggregate(test_mains, output, test_meter, sample_period=1)
 output.close()

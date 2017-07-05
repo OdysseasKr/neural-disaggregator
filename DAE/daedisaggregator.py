@@ -25,7 +25,6 @@ class DAEDisaggregator(Disaggregator):
     Attributes
     ----------
     model : keras Sequential model
-    meter_metadata : metadata of meter channel
     sequence_length : the size of window to use on the aggregate data
     mmax : the maximum value of the aggregate data
     gpu_mode : true if this is intended for gpu execution
@@ -34,7 +33,7 @@ class DAEDisaggregator(Disaggregator):
        the minimum length of an acceptable chunk
     '''
 
-    def __init__(self, meter, sequence_length, gpu_mode=False):
+    def __init__(self, sequence_length, gpu_mode=False):
         '''Initialize disaggregator
 
         Parameters
@@ -48,7 +47,6 @@ class DAEDisaggregator(Disaggregator):
         self.sequence_length = sequence_length
         self.MIN_CHUNK_LENGTH = sequence_length
         self.gpu_mode = gpu_mode
-        self.meter_metadata = meter
         self.model = self._create_model(self.sequence_length)
 
     def train(self, mains, meter, epochs=1, batch_size=16, **load_kwargs):
@@ -115,7 +113,7 @@ class DAEDisaggregator(Disaggregator):
 
         self.model.fit(X_batch, Y_batch, batch_size=batch_size, nb_epoch=epochs, shuffle=True)
 
-    def disaggregate(self, mains, output_datastore, **load_kwargs):
+    def disaggregate(self, mains, output_datastore, meter_metadata, **load_kwargs):
         '''Disaggregate mains according to the model learnt.
 
         Parameters
@@ -123,6 +121,7 @@ class DAEDisaggregator(Disaggregator):
         mains : nilmtk.ElecMeter
         output_datastore : instance of nilmtk.DataStore subclass
             For storing power predictions from disaggregation algorithm.
+        meter_metadata : metadata for the produced output
         **load_kwargs : key word arguments
             Passed to `mains.power_series(**kwargs)`
         '''
@@ -153,7 +152,7 @@ class DAEDisaggregator(Disaggregator):
             # Append prediction to output
             data_is_available = True
             cols = pd.MultiIndex.from_tuples([chunk.name])
-            meter_instance = self.meter_metadata.instance()
+            meter_instance = meter_metadata.instance()
             df = pd.DataFrame(
                 appliance_power.values, index=appliance_power.index,
                 columns=cols, dtype="float32")
@@ -172,7 +171,7 @@ class DAEDisaggregator(Disaggregator):
                 measurement=measurement,
                 timeframes=timeframes,
                 building=mains.building(),
-                meters=[self.meter_metadata]
+                meters=[meter_metadata]
             )
 
     def disaggregate_chunk(self, mains):
