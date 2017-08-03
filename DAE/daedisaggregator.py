@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import h5py
+import random
+import sys
 
 from keras.models import load_model
 from keras.models import Sequential
@@ -111,7 +113,87 @@ class DAEDisaggregator(Disaggregator):
         X_batch = np.reshape(X_batch, (int(len(X_batch) / s), s, 1))
         Y_batch = np.reshape(Y_batch, (int(len(Y_batch) / s), s, 1))
 
-        self.model.fit(X_batch, Y_batch, batch_size=batch_size, nb_epoch=epochs, shuffle=True)
+        self.model.fit(X_batch, Y_batch, batch_size=batch_size, epochs=epochs, shuffle=True)
+
+    def train_on_buildings(self, mainlist, meterlist, epochs=1, batch_size=128, **load_kwargs):
+        assert(len(mainlist) == len(meterlist), "Number of main and meter channels should be equal")
+        num_meters = len(mainlist)
+
+        mainps = [None] * num_meters
+        meterps = [None] * num_meters
+        mainchunks = [None] * num_meters
+        meterchunks = [None] * num_meters
+
+        for i,m in enumerate(mainlist):
+            mainps[i] = m.power_series(**load_kwargs)
+
+        for i,m in enumerate(meterlist):
+            meterps[i] = m.power_series(**load_kwargs)
+
+        for i in range(num_meters):
+            mainchunks[i] = next(mainps[i])
+            meterchunks[i] = next(meterps[i])
+        if self.mmax == None:
+            self.mmax = max([m.max() for m in mainchunks])
+
+
+        run = True
+        while(run):
+            mainchunks = [self._normalize(m, self.mmax) for m in mainchunks]
+            meterchunks = [self._normalize(m, self.mmax) for m in meterchunks]
+
+            self.train_on_buildings_chunk(mainchunks, meterchunks, epochs, batch_size)
+            try:
+                for i in range(num_meters):
+                    mainchunks[i] = next(mainps[i])
+                    meterchunks[i] = next(meterps[i])
+            except:
+                run = False
+
+    def train_on_buildings_chunk(self, mainchunks, meterchunks, epochs, batch_size):
+        num_meters = len(mainchunks)
+        batch_size = int(batch_size/num_meters)
+        num_of_batches = [None] * num_meters
+        s = self.sequence_length
+        for i in range(num_meters):
+            mainchunks[i].fillna(0, inplace=True)
+            meterchunks[i].fillna(0, inplace=True)
+            ix = mainchunks[i].index.intersection(meterchunks[i].index)
+            m1 = mainchunks[i]
+            m2 = meterchunks[i]
+            mainchunks[i] = m1[ix]
+            meterchunks[i] = m2[ix]
+
+            num_of_batches[i] = int(len(ix)/(s*batch_size)) - 1
+
+        for e in range(epochs):
+            print(e)
+            batch_indexes = range(min(num_of_batches))
+            random.shuffle(batch_indexes)
+
+            for bi, b in enumerate(batch_indexes):
+
+                print("Batch {} of {}".format(bi,num_of_batches), end="\r")
+                sys.stdout.flush()
+                X_batch = np.empty((batch_size*num_meters, s, 1))
+                Y_batch = np.empty((batch_size*num_meters, s, 1))
+
+                for i in range(num_meters):
+                    mainpart = mainchunks[i]
+                    meterpart = mainchunks[i]
+                    mainpart = mainpart[b*batch_size*s:(b+1)*batch_size*s]
+                    meterpart = meterpart[b*batch_size*s:(b+1)*batch_size*s]
+                    X = np.reshape(mainpart, (batch_size, s, 1))
+                    Y = np.reshape(meterpart, (batch_size, s, 1))
+
+                    X_batch[i*batch_size:(i+1)*batch_size] = np.array(X)
+                    Y_batch[i*batch_size:(i+1)*batch_size] = np.array(Y)
+
+                p = np.random.permutation(len(X_batch))
+                X_batch, Y_batch = X_batch[p], Y_batch[p]
+
+                self.model.train_on_batch(X_batch, Y_batch)
+            print("\n")
 
     def disaggregate(self, mains, output_datastore, meter_metadata, **load_kwargs):
         '''Disaggregate mains according to the model learnt.
@@ -193,7 +275,7 @@ class DAEDisaggregator(Disaggregator):
 
         additional = s - (up_limit % s)
         X_batch = np.append(mains, np.zeros(additional))
-        X_batch = np.reshape(X_batch, (len(X_batch) / s, s ,1))
+        X_batch = np.reshape(X_batch, (int(len(X_batch) / s), s ,1))
 
         pred = self.model.predict(X_batch)
         pred = np.reshape(pred, (up_limit + additional))[:up_limit]
@@ -264,7 +346,7 @@ class DAEDisaggregator(Disaggregator):
         model = Sequential()
 
         # 1D Conv
-        model.add(Conv1D(8, 4, activation="linear", input_shape=(256, 1), padding="same", strides=1))
+        model.add(Conv1D(8, 4, activation="linear", input_shape=(sequence_len, 1), padding="same", strides=1))
         model.add(Flatten())
 
         # Fully Connected Layers
