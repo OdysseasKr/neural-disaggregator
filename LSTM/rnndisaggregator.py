@@ -26,8 +26,6 @@ class RNNDisaggregator(Disaggregator):
     Attributes
     ----------
     model : keras Sequential model
-    meter_metadata : metadata of meter channel
-    window_size : the size of window to use on the aggregate data
     mmax : the maximum value of the aggregate data
     gpu_mode : true if this is intended for gpu execution
 
@@ -35,23 +33,18 @@ class RNNDisaggregator(Disaggregator):
        the minimum length of an acceptable chunk
     '''
 
-    def __init__(self, meter, window_size, gpu_mode=False):
+    def __init__(self, gpu_mode=False):
         '''Initialize disaggregator
         DOES NOT TAKE INTO ACCOUNT EXISTANCE OF VAMPIRE POWER
 
         Parameters
-        ----------
-        window_size : the size of window to use on the aggregate data
-        meter : a nilmtk.ElecMeter meter of the appliance to be disaggregated
         gpu_mode : true if this is intended for gpu execution
         '''
         self.MODEL_NAME = "LSTM"
         self.mmax = None
-        self.window_size = window_size
-        self.MIN_CHUNK_LENGTH = window_size
+        self.MIN_CHUNK_LENGTH = 100
         self.gpu_mode = gpu_mode
-        self.meter_metadata = meter
-        self.model = self._create_model(self.window_size)
+        self.model = self._create_model()
 
     def train(self, mains, meter, epochs=1, batch_size=128, **load_kwargs):
         '''Train
@@ -61,6 +54,7 @@ class RNNDisaggregator(Disaggregator):
         mains : a nilmtk.ElecMeter object for the aggregate data
         meter : a nilmtk.ElecMeter object for the meter data
         epochs : number of epochs to train
+        batch_size : size of batch used for training
         **load_kwargs : keyword arguments passed to `meter.power_series()`
         '''
 
@@ -93,37 +87,136 @@ class RNNDisaggregator(Disaggregator):
         mainchunk : chunk of site meter
         meterchunk : chunk of appliance
         epochs : number of epochs for training
+        batch_size : size of batch used for training
         '''
 
         # Replace NaNs with 0s
         mainchunk.fillna(0, inplace=True)
         meterchunk.fillna(0, inplace=True)
         ix = mainchunk.index.intersection(meterchunk.index)
-        mainchunk = mainchunk[ix]
-        meterchunk = meterchunk[ix]
+        mainchunk = np.array(mainchunk[ix])
+        meterchunk = np.array(meterchunk[ix])
 
-        num_of_batches = int(len(ix)/batch_size) - 1
+        mainchunk = np.reshape(mainchunk, (mainchunk.shape[0],1,1))
 
-        for e in range(epochs):
+        self.model.fit(mainchunk, meterchunk, epochs=epochs, batch_size=batch_size, shuffle=True)
+
+    def train_on_buildings(self, mainlist, meterlist, epochs=1, batch_size=128, **load_kwargs):
+        '''Train using data from multiple buildings
+
+        Parameters
+        ----------
+        mainlist : a list of nilmtk.ElecMeter objects for the aggregate data of each building
+        meterlist : a list of nilmtk.ElecMeter objects for the meter data of each building
+        batch_size : size of batch used for training
+        epochs : number of epochs to train
+        **load_kwargs : keyword arguments passed to `meter.power_series()`
+        '''
+
+        assert(len(mainlist) == len(meterlist), "Number of main and meter channels should be equal")
+        num_meters = len(mainlist)
+
+        mainps = [None] * num_meters
+        meterps = [None] * num_meters
+        mainchunks = [None] * num_meters
+        meterchunks = [None] * num_meters
+
+        # Get generators of timeseries
+        for i,m in enumerate(mainlist):
+            mainps[i] = m.power_series(**load_kwargs)
+
+        for i,m in enumerate(meterlist):
+            meterps[i] = m.power_series(**load_kwargs)
+
+        # Get a chunk of data
+        for i in range(num_meters):
+            mainchunks[i] = next(mainps[i])
+            meterchunks[i] = next(meterps[i])
+        if self.mmax == None:
+            self.mmax = max([m.max() for m in mainchunks])
+
+
+        run = True
+        while(run):
+            # Normalize and train
+            mainchunks = [self._normalize(m, self.mmax) for m in mainchunks]
+            meterchunks = [self._normalize(m, self.mmax) for m in meterchunks]
+
+            self.train_on_buildings_chunk(mainchunks, meterchunks, epochs, batch_size)
+
+            # If more chunks, repeat
+            try:
+                for i in range(num_meters):
+                    mainchunks[i] = next(mainps[i])
+                    meterchunks[i] = next(meterps[i])
+            except:
+                run = False
+
+    def train_on_buildings_chunk(self, mainchunks, meterchunks, epochs, batch_size):
+        '''Train using only one chunk of data. This chunk consists of data from
+        all buildings.
+
+        Parameters
+        ----------
+        mainchunk : chunk of site meter
+        meterchunk : chunk of appliance
+        epochs : number of epochs for training
+        batch_size : size of batch used for training
+        '''
+        num_meters = len(mainchunks)
+        batch_size = int(batch_size/num_meters)
+        num_of_batches = [None] * num_meters
+
+        # Find common parts of timeseries
+        for i in range(num_meters):
+            mainchunks[i].fillna(0, inplace=True)
+            meterchunks[i].fillna(0, inplace=True)
+            ix = mainchunks[i].index.intersection(meterchunks[i].index)
+            m1 = mainchunks[i]
+            m2 = meterchunks[i]
+            mainchunks[i] = m1[ix]
+            meterchunks[i] = m2[ix]
+
+            num_of_batches[i] = int(len(ix)/batch_size) - 1
+
+        for e in range(epochs): # Iterate for every epoch
             print(e)
-            batch_indexes = range(num_of_batches)
+            batch_indexes = range(min(num_of_batches))
             random.shuffle(batch_indexes)
 
-            for bi, b in enumerate(batch_indexes):
+            for bi, b in enumerate(batch_indexes): # Iterate for every batch
                 print("Batch {} of {}".format(bi,num_of_batches), end="\r")
                 sys.stdout.flush()
-                X_batch, Y_batch = self.gen_batch(mainchunk, meterchunk, batch_size, b)
+                X_batch = np.empty((batch_size*num_meters, 1, 1))
+                Y_batch = np.empty((batch_size*num_meters, 1))
+
+                # Create a batch out of data from all buildings
+                for i in range(num_meters):
+                    mainpart = mainchunks[i]
+                    meterpart = mainchunks[i]
+                    mainpart = mainpart[b*batch_size:(b+1)*batch_size]
+                    meterpart = meterpart[b*batch_size:(b+1)*batch_size]
+                    X = np.reshape(mainpart, (batch_size, 1, 1))
+                    Y = np.reshape(meterpart, (batch_size, 1))
+
+                    X_batch[i*batch_size:(i+1)*batch_size] = np.array(X)
+                    Y_batch[i*batch_size:(i+1)*batch_size] = np.array(Y)
+
+                # Shuffle data
+                p = np.random.permutation(len(X_batch))
+                X_batch, Y_batch = X_batch[p], Y_batch[p]
+
+                # Train model
                 self.model.train_on_batch(X_batch, Y_batch)
             print("\n")
 
-        #self.model.fit(X_batch, Y_batch, batch_size=batch_size, nb_epoch=epochs, shuffle=True)
-
-    def disaggregate(self, mains, output_datastore, **load_kwargs):
+    def disaggregate(self, mains, meter_metadata, output_datastore, **load_kwargs):
         '''Disaggregate mains according to the model learnt previously.
 
         Parameters
         ----------
-        mains : nilmtk.ElecMeter
+        mains : a nilmtk.ElecMeter of aggregate data
+        meter_metadata: a nilmtk.ElecMeter of the observed meter used for storing the metadata
         output_datastore : instance of nilmtk.DataStore subclass
             For storing power predictions from disaggregation algorithm.
         **load_kwargs : key word arguments
@@ -156,7 +249,7 @@ class RNNDisaggregator(Disaggregator):
             # Append prediction to output
             data_is_available = True
             cols = pd.MultiIndex.from_tuples([chunk.name])
-            meter_instance = self.meter_metadata.instance()
+            meter_instance = meter_metadata.instance()
             df = pd.DataFrame(
                 appliance_power.values, index=appliance_power.index,
                 columns=cols, dtype="float32")
@@ -175,7 +268,7 @@ class RNNDisaggregator(Disaggregator):
                 measurement=measurement,
                 timeframes=timeframes,
                 building=mains.building(),
-                meters=[self.meter_metadata]
+                meters=[meter_metadata]
             )
 
     def disaggregate_chunk(self, mains):
@@ -183,46 +276,28 @@ class RNNDisaggregator(Disaggregator):
 
         Parameters
         ----------
-        mains : pd.Series
+        mains : pd.Series of aggregate data
         Returns
         -------
         appliance_powers : pd.DataFrame where each column represents a
             disaggregated appliance.  Column names are the integer index
             into `self.model` for the appliance in question.
         '''
-        w = self.window_size
         up_limit = len(mains)
 
         mains.fillna(0, inplace=True)
 
-        X_batch = np.array([ mains[i:i+w] for i in range(up_limit-(w-1)) ])
-        X_batch = np.reshape(X_batch, (len(X_batch), w ,1))
+        X_batch = np.array(mains)
+        X_batch = np.reshape(X_batch, (X_batch.shape[0],1,1))
 
-        pred = self.model.predict(X_batch)
-        pred = np.append(np.zeros(w-1), [x[0] for x in pred])
-        column = pd.Series(pred, index=mains.index, name=0)
+        pred = self.model.predict(X_batch, batch_size=128)
+        pred = np.reshape(pred, (len(pred)))
+        column = pd.Series(pred, index=mains.index[:len(X_batch)], name=0)
 
         appliance_powers_dict = {}
         appliance_powers_dict[0] = column
         appliance_powers = pd.DataFrame(appliance_powers_dict)
         return appliance_powers
-
-    def gen_batch(self, mainchunk, meterchunk, batch_size, index):
-        '''Generates batches from dataset
-
-        Parameters
-        ----------
-        index : the index of the batch
-        '''
-        w = self.window_size
-        offset = index*batch_size
-        X_batch = np.array([ mainchunk[i+offset:i+offset+w]
-                            for i in range(batch_size) ])
-        Y_batch = meterchunk.values[w-1+offset:w-1+offset+batch_size]
-
-        X_batch = np.reshape(X_batch, (len(X_batch), w ,1))
-
-        return X_batch, Y_batch
 
     def import_model(self, filename):
         '''Loads keras model from h5
@@ -277,27 +352,23 @@ class RNNDisaggregator(Disaggregator):
         tchunk = chunk * mmax
         return tchunk
 
-    def _create_model(self, input_window):
+    def _create_model(self):
         '''Creates the RNN module described in the paper
         '''
         model = Sequential()
 
         # 1D Conv
-
-        model.add(Conv1D(16, 4, activation="linear", input_shape=(input_window,1), padding="same", strides=1))
+        model.add(Conv1D(16, 4, activation="linear", input_shape=(1,1), padding="same", strides=1))
 
         #Bi-directional LSTMs
-        model.add(Bidirectional(LSTM(128, return_sequences=True), merge_mode='concat'))
-        model.add(Bidirectional(LSTM(256, return_sequences=False), merge_mode='concat'))
+        model.add(Bidirectional(LSTM(128, return_sequences=True, stateful=False), merge_mode='concat'))
+        model.add(Bidirectional(LSTM(256, return_sequences=False, stateful=False), merge_mode='concat'))
 
         # Fully Connected Layers
-        Dropout(0.2)
         model.add(Dense(128, activation='tanh'))
-        Dropout(0.2)
         model.add(Dense(1, activation='linear'))
 
         model.compile(loss='mse', optimizer='adam')
         plot_model(model, to_file='model.png', show_shapes=True)
 
         return model
-        

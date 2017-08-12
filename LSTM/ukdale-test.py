@@ -12,29 +12,32 @@ train = DataSet('../../Datasets/UKDALE/ukdale.h5')
 test = DataSet('../../Datasets/UKDALE/ukdale.h5')
 
 train.set_window(start="13-4-2013", end="1-1-2014")
-test.set_window(start="24-5-2013", end="8-1-2013")
+test.set_window(start="1-1-2014", end="30-3-2014")
 
 train_elec = train.buildings[1].elec
-test_elec = test.buildings[2].elec
+test_elec = test.buildings[1].elec
+meter_key = 'kettle'
 
-train_meter = train_elec.submeters()['kettle']
+train_meter = train_elec.submeters()[meter_key]
 train_mains = train_elec.mains()
 test_mains = test_elec.mains()
-rnn = RNNDisaggregator(train_meter, 32, gpu_mode=True)
+rnn = RNNDisaggregator(gpu_mode=True)
 
 
 start = time.time()
 print("========== TRAIN ============")
-# Note that we have given the sample period to downsample the data to 8 seconds
-rnn.train(train_mains, train_meter, epochs=4, batch_size=128, sample_period=8)
-rnn.export_model("rnnwithdropout/UKDALE-RNN-h1-kettle.h5")
+epochs = 0
+for i in range(1):
+    print("CHECKPOINT {}".format(epochs))
+    rnn.train(train_mains, train_meter, epochs=5, sample_period=6)
+    epochs += 5
+    rnn.export_model("UKDALE-RNN-h1-{}-{}epochs.h5".format(meter_key, epochs))
 end = time.time()
 print("Train =", end-start, "seconds.")
 
 
 print("========== DISAGGREGATE ============")
-disag_filename = 'rnnwithdropout/disag-out-kettle.h5'
+disag_filename = "disag-out-h1-{}-{}epochs.h5".format(meter_key, epochs)
 output = HDFDataStore(disag_filename, 'w')
-# Note that we have mentioned to disaggregate after converting to a sample period of 8 seconds
-rnn.disaggregate(test_mains, output, sample_period=8)
+rnn.disaggregate(test_mains, train_meter, output, sample_period=6)
 output.close()
