@@ -1,6 +1,4 @@
-from nilmtk.electric import align_two_meters
 import numpy as np
-import matplotlib.pyplot as plt
 
 def tp_tn_fp_fn(states_pred, states_ground):
     tp = np.sum(np.logical_and(states_pred == 1, states_ground == 1))
