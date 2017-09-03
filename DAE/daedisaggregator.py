@@ -29,26 +29,23 @@ class DAEDisaggregator(Disaggregator):
     model : keras Sequential model
     sequence_length : the size of window to use on the aggregate data
     mmax : the maximum value of the aggregate data
-    gpu_mode : true if this is intended for gpu execution
 
     MIN_CHUNK_LENGTH : int
        the minimum length of an acceptable chunk
     '''
 
-    def __init__(self, sequence_length, gpu_mode=False):
+    def __init__(self, sequence_length):
         '''Initialize disaggregator
 
         Parameters
         ----------
         sequence_length : the size of window to use on the aggregate data
         meter : a nilmtk.ElecMeter meter of the appliance to be disaggregated
-        gpu_mode : true if this is intended for gpu execution
         '''
         self.MODEL_NAME = "AUTOENCODER"
         self.mmax = None
         self.sequence_length = sequence_length
         self.MIN_CHUNK_LENGTH = sequence_length
-        self.gpu_mode = gpu_mode
         self.model = self._create_model(self.sequence_length)
 
     def train(self, mains, meter, epochs=1, batch_size=16, **load_kwargs):
