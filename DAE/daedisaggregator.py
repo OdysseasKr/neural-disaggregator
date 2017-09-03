@@ -362,7 +362,7 @@ class DAEDisaggregator(Disaggregator):
         model.add(Reshape(((sequence_len-0), 8)))
         model.add(Conv1D(1, 4, activation="linear", padding="same", strides=1))
 
-        model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
+        model.compile(loss='mse', optimizer='adam')
         plot_model(model, to_file='model.png', show_shapes=True)
 
         return model
