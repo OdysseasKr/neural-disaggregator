@@ -27,23 +27,17 @@ class RNNDisaggregator(Disaggregator):
     ----------
     model : keras Sequential model
     mmax : the maximum value of the aggregate data
-    gpu_mode : true if this is intended for gpu execution
 
     MIN_CHUNK_LENGTH : int
        the minimum length of an acceptable chunk
     '''
 
-    def __init__(self, gpu_mode=False):
+    def __init__(self):
         '''Initialize disaggregator
-        DOES NOT TAKE INTO ACCOUNT EXISTANCE OF VAMPIRE POWER
-
-        Parameters
-        gpu_mode : true if this is intended for gpu execution
         '''
         self.MODEL_NAME = "LSTM"
         self.mmax = None
         self.MIN_CHUNK_LENGTH = 100
-        self.gpu_mode = gpu_mode
         self.model = self._create_model()
 
     def train(self, mains, meter, epochs=1, batch_size=128, **load_kwargs):
