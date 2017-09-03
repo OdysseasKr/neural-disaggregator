@@ -41,7 +41,7 @@ print("Train =", end-start, "seconds.")
 print("========== DISAGGREGATE ============")
 disag_filename = "disag-out-h1-{}-{}epochs.h5".format(meter_key, epochs)
 output = HDFDataStore(disag_filename, 'w')
-rnn.disaggregate(test_mains, train_meter, output, sample_period=6)
+rnn.disaggregate(test_mains, output, train_meter, sample_period=6)
 output.close()
 
 print("========== RESULTS ============")

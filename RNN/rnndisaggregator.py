@@ -204,7 +204,7 @@ class RNNDisaggregator(Disaggregator):
                 self.model.train_on_batch(X_batch, Y_batch)
             print("\n")
 
-    def disaggregate(self, mains, meter_metadata, output_datastore, **load_kwargs):
+    def disaggregate(self, mains, output_datastore, meter_metadata, **load_kwargs):
         '''Disaggregate mains according to the model learnt previously.
 
         Parameters
