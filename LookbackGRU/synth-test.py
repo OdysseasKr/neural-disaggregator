@@ -9,30 +9,9 @@ from keras.models import load_model
 from keras.models import Sequential
 from keras.layers import Dense, Conv1D, GRU, Bidirectional
 from keras.utils import plot_model
+from gen import opends, mmax, gen_batch
 
 import metrics
-
-mmax = 5000 # Assumed maximum consumption value
-def opends(building, meter):
-    '''Opens dataset of synthetic data from Neural NILM
-
-    Parameters
-    ----------
-    building : The integer id of the building
-    meter : The string key of the meter
-
-    Returns: np.arrays of data in the following order: main data, meter data
-    '''
-
-    path = "../../Datasets/SyntheticNeuralNILM/ground_truth_and_mains/"
-    main_filename = "{}building_{}_mains.csv".format(path, building)
-    meter_filename = "{}building_{}_{}.csv".format(path, building, meter)
-    mains = np.genfromtxt(main_filename)
-    meter = np.genfromtxt(meter_filename)
-    mains = mains / mmax
-    meter = meter / mmax
-    up_limit = min(len(mains),len(meter))
-    return mains[:up_limit], meter[:up_limit]
 
 def create_model(input_window):
     '''Creates and returns the Neural Network
@@ -55,24 +34,6 @@ def create_model(input_window):
 
     return model
 
-def gen_batch(mainchunk, meterchunk, batch_size, index,window_size):
-    '''Generates batches from dataset
-
-    Parameters
-    ----------
-    index : the index of the batch
-    '''
-    w = window_size
-    offset = index*batch_size
-    X_batch = np.array([ mainchunk[i+offset:i+offset+w]
-                        for i in range(batch_size) ])
-
-    Y_batch = meterchunk[w-1+offset:w-1+offset+batch_size]
-    X_batch = np.reshape(X_batch, (len(X_batch), w ,1))
-
-    return X_batch, Y_batch
-
-
 key_name = 'fridge' # The string ID of the meter
 input_window = 50 # Lookback parameter
 threshold = 60 # On Power Threshold
@@ -81,8 +42,8 @@ test_building = 5 # ID of the building to be used for testing
 # ======= Training phase
 
 # Open train sets
-X_train = np.load("X-{}.npy".format(key_name))
-y_train = np.load("Y-{}.npy".format(key_name))
+X_train = np.load("dataset/trainsets/X-{}.npy".format(key_name))
+y_train = np.load("dataset/trainsets/Y-{}.npy".format(key_name))
 model = create_model(input_window)
 
 # Train model and save checkpoints
