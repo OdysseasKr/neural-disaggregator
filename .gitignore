@@ -3,3 +3,5 @@
 printout*.py
 *.h5
 Junk
+/LookbackGRU/dataset/
+.idea
