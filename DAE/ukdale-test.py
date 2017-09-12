@@ -15,9 +15,11 @@ test = DataSet('../../Datasets/UKDALE/ukdale.h5')
 train.set_window(start="13-4-2013", end="1-1-2014")
 test.set_window(start="1-1-2014", end="30-3-2014")
 
-test_building = 1
+train_building = 2
+test_building = 2
+sample_period = 6
 meter_key = 'microwave'
-train_elec = train.buildings[1].elec
+train_elec = train.buildings[train_building].elec
 test_elec = test.buildings[test_building].elec
 
 train_meter = train_elec.submeters()[meter_key]
@@ -33,7 +35,7 @@ epochs = 0
 #dae.import_model("UKDALE-DAE-h1-microwave-10epochs.h5")
 for i in range(3):
     print("CHECKPOINT {}".format(epochs))
-    dae.train(train_mains, train_meter, epochs=5, sample_period=6)
+    dae.train(train_mains, train_meter, epochs=5, sample_period=sample_period)
     epochs += 5
     dae.export_model("UKDALE-DAE-h1-microwave-{}epochs.h5".format(epochs))
 end = time.time()
@@ -43,7 +45,7 @@ print("Train =", end-start, "seconds.")
 print("========== DISAGGREGATE ============")
 disag_filename = "disag-out-h1-microwave-{}epochs.h5".format(epochs)
 output = HDFDataStore(disag_filename, 'w')
-dae.disaggregate(test_mains, output, test_meter, sample_period=6)
+dae.disaggregate(test_mains, output, test_meter, sample_period=sample_period)
 output.close()
 
 print("========== RESULTS ============")
