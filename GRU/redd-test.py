@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 
 from nilmtk import DataSet, TimeFrame, MeterGroup, HDFDataStore
 from nilmtk.elecmeter import ElecMeterID
-from grudisaggregator import GRUdisaggregator
+import metrics
+from grudisaggregator import GRUDisaggregator
 
 print("========== OPEN DATASETS ============")
 train = DataSet('../../Datasets/REDD/redd.h5')
@@ -16,12 +17,12 @@ test.set_window(start="30-4-2011")
 
 train_building = 1
 test_building = 1
-sample_period = 6
+sample_period = 60
 train_elec = train.buildings[train_building].elec
 test_elec = test.buildings[test_building].elec
-meterkeys = ['microwave']
+meterkeys = ['fridge']
 
-disagregator = GRUdisaggregator(len(meterkeys), 128, gpu_mode=True)
+disagregator = GRUDisaggregator()
 
 start = time.time()
 print("========== TRAIN ============")
@@ -42,3 +43,17 @@ out_metadata = test_elec.submeters().from_list(mlist)
 
 disagregator.disaggregate(test_mains, output, out_metadata, sample_period=sample_period)
 output.close()
+
+
+for m in meterkeys:
+    print("========== RESULTS ============")
+    result = DataSet(disag_filename)
+    res_elec = result.buildings[test_building].elec
+    rpaf = metrics.recall_precision_accuracy_f1(res_elec[m], test_elec[m])
+    print("============ Recall: {}".format(rpaf[0]))
+    print("============ Precision: {}".format(rpaf[1]))
+    print("============ Accuracy: {}".format(rpaf[2]))
+    print("============ F1 Score: {}".format(rpaf[2]))
+
+    print("============ Relative error in total energy: {}".format(metrics.relative_error_total_energy(res_elec[m], test_elec[m])))
+    print("============ Mean absolute error(in Watts): {}".format(metrics.mean_absolute_error(res_elec[m], test_elec[m])))

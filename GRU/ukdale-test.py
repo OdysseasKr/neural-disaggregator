@@ -16,8 +16,10 @@ train.set_window(start="13-4-2013", end="1-1-2014")
 test.set_window(start="1-1-2014", end="30-3-2014")
 
 meter_key = 'microwave'
-test_building = 1
-train_elec = train.buildings[1].elec
+train_building = 2
+test_building = 2
+sample_period = 60
+train_elec = train.buildings[train_building].elec
 test_elec = test.buildings[test_building].elec
 
 train_meter = train_elec.submeters()[meter_key]
@@ -29,7 +31,7 @@ start = time.time()
 print("========== TRAIN ============")
 epochs = 0
 for i in range(1):
-    rnn.train(train_mains, train_meter, epochs=1, sample_period=6)
+    rnn.train(train_mains, train_meter, epochs=1, sample_period=sample_period)
     epochs += 5
     rnn.export_model("UKDALE-RNN-h1-{}-{}epochs.h5".format(meter_key, epochs))
     print("CHECKPOINT {}".format(epochs))
@@ -40,7 +42,7 @@ print("Train =", end-start, "seconds.")
 print("========== DISAGGREGATE ============")
 disag_filename = "disag-out-h1-{}-{}epochs.h5".format(meter_key, epochs)
 output = HDFDataStore(disag_filename, 'w')
-rnn.disaggregate(test_mains, output, train_meter, sample_period=6)
+rnn.disaggregate(test_mains, output, train_meter, sample_period=sample_period)
 output.close()
 
 print("========== RESULTS ============")
