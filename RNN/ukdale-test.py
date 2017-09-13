@@ -9,16 +9,18 @@ from rnndisaggregator import RNNDisaggregator
 import metrics
 
 print("========== OPEN DATASETS ============")
-train = DataSet('../../Datasets/UKDALE/ukdale-utc.h5')
-test = DataSet('../../Datasets/UKDALE/ukdale-utc.h5')
+train = DataSet('../../Datasets/UKDALE/ukdale.h5')
+test = DataSet('../../Datasets/UKDALE/ukdale.h5')
 
-train.set_window(start="13-4-2014", end="1-1-2015")
-test.set_window(start="1-1-2015", end="30-3-2015")
+train.set_window(start="13-4-2013", end="1-1-2014")
+test.set_window(start="1-1-2014", end="30-3-2014")
 
-meter_key = 'kettle'
+train_building = 1
 test_building = 1
-train_elec = train.buildings[1].elec
-test_elec = test.buildings[1].elec
+sample_period = 6
+meter_key = 'kettle'
+train_elec = train.buildings[train_building].elec
+test_elec = test.buildings[test_building].elec
 
 train_meter = train_elec.submeters()[meter_key]
 train_mains = train_elec.mains()
@@ -29,19 +31,21 @@ rnn = RNNDisaggregator()
 start = time.time()
 print("========== TRAIN ============")
 epochs = 0
-for i in range(1):
+for i in range(3):
     print("CHECKPOINT {}".format(epochs))
-    rnn.train(train_mains, train_meter, epochs=1, sample_period=6)
+    rnn.train(train_mains, train_meter, epochs=5, sample_period=sample_period)
     epochs += 5
-    rnn.export_model("UKDALE-RNN-h1-{}-{}epochs.h5".format(meter_key, epochs))
+    rnn.export_model("UKDALE-RNN-h{}-{}-{}epochs.h5".format(train_building,
+                                                        meter_key,
+                                                        epochs))
 end = time.time()
 print("Train =", end-start, "seconds.")
 
 
 print("========== DISAGGREGATE ============")
-disag_filename = "disag-out-h1-{}-{}epochs.h5".format(meter_key, epochs)
+disag_filename = "disag-out.h5"
 output = HDFDataStore(disag_filename, 'w')
-rnn.disaggregate(test_mains, output, train_meter, sample_period=6)
+rnn.disaggregate(test_mains, output, train_meter, sample_period=sample_period)
 output.close()
 
 print("========== RESULTS ============")
