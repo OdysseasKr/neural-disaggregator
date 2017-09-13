@@ -16,7 +16,7 @@ train.set_window(start="13-4-2013", end="1-1-2014")
 test.set_window(start="1-1-2014", end="30-3-2014")
 
 train_building = 1
-test_building = 2
+test_building = 1
 sample_period = 6
 meter_key = 'microwave'
 train_elec = train.buildings[train_building].elec
