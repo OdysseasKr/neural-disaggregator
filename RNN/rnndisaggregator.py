@@ -95,7 +95,7 @@ class RNNDisaggregator(Disaggregator):
 
         self.model.fit(mainchunk, meterchunk, epochs=epochs, batch_size=batch_size, shuffle=True)
 
-    def train_on_buildings(self, mainlist, meterlist, epochs=1, batch_size=128, **load_kwargs):
+    def train_across_buildings(self, mainlist, meterlist, epochs=1, batch_size=128, **load_kwargs):
         '''Train using data from multiple buildings
 
         Parameters
@@ -136,7 +136,7 @@ class RNNDisaggregator(Disaggregator):
             mainchunks = [self._normalize(m, self.mmax) for m in mainchunks]
             meterchunks = [self._normalize(m, self.mmax) for m in meterchunks]
 
-            self.train_on_buildings_chunk(mainchunks, meterchunks, epochs, batch_size)
+            self.train_across_buildings_chunk(mainchunks, meterchunks, epochs, batch_size)
 
             # If more chunks, repeat
             try:
@@ -146,7 +146,7 @@ class RNNDisaggregator(Disaggregator):
             except:
                 run = False
 
-    def train_on_buildings_chunk(self, mainchunks, meterchunks, epochs, batch_size):
+    def train_across_buildings_chunk(self, mainchunks, meterchunks, epochs, batch_size):
         '''Train using only one chunk of data. This chunk consists of data from
         all buildings.
 

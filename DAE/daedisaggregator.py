@@ -112,7 +112,7 @@ class DAEDisaggregator(Disaggregator):
 
         self.model.fit(X_batch, Y_batch, batch_size=batch_size, epochs=epochs, shuffle=True)
 
-    def train_on_buildings(self, mainlist, meterlist, epochs=1, batch_size=128, **load_kwargs):
+    def train_across_buildings(self, mainlist, meterlist, epochs=1, batch_size=128, **load_kwargs):
         assert(len(mainlist) == len(meterlist), "Number of main and meter channels should be equal")
         num_meters = len(mainlist)
 
@@ -139,7 +139,7 @@ class DAEDisaggregator(Disaggregator):
             mainchunks = [self._normalize(m, self.mmax) for m in mainchunks]
             meterchunks = [self._normalize(m, self.mmax) for m in meterchunks]
 
-            self.train_on_buildings_chunk(mainchunks, meterchunks, epochs, batch_size)
+            self.train_across_buildings_chunk(mainchunks, meterchunks, epochs, batch_size)
             try:
                 for i in range(num_meters):
                     mainchunks[i] = next(mainps[i])
@@ -147,7 +147,7 @@ class DAEDisaggregator(Disaggregator):
             except:
                 run = False
 
-    def train_on_buildings_chunk(self, mainchunks, meterchunks, epochs, batch_size):
+    def train_across_buildings_chunk(self, mainchunks, meterchunks, epochs, batch_size):
         num_meters = len(mainchunks)
         batch_size = int(batch_size/num_meters)
         num_of_batches = [None] * num_meters
