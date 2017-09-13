@@ -15,34 +15,36 @@ test = DataSet('../../Datasets/UKDALE/ukdale.h5')
 train.set_window(start="13-4-2013", end="1-1-2014")
 test.set_window(start="1-1-2014", end="30-3-2014")
 
+train_building = 1
+test_building = 1
+sample_period = 6
 meter_key = 'microwave'
-train_building = 2
-test_building = 2
-sample_period = 60
 train_elec = train.buildings[train_building].elec
 test_elec = test.buildings[test_building].elec
 
 train_meter = train_elec.submeters()[meter_key]
 train_mains = train_elec.mains()
 test_mains = test_elec.mains()
-rnn = GRUDisaggregator()
+gru = GRUDisaggregator()
 
 start = time.time()
 print("========== TRAIN ============")
 epochs = 0
-for i in range(1):
-    rnn.train(train_mains, train_meter, epochs=1, sample_period=sample_period)
+for i in range(3):
+    gru.train(train_mains, train_meter, epochs=5, sample_period=sample_period)
     epochs += 5
-    rnn.export_model("UKDALE-RNN-h1-{}-{}epochs.h5".format(meter_key, epochs))
+    gru.export_model("UKDALE-GRU-h{}-{}-{}epochs.h5".format(train_building,
+                                                        meter_key,
+                                                        epochs))
     print("CHECKPOINT {}".format(epochs))
 end = time.time()
 print("Train =", end-start, "seconds.")
 
 
 print("========== DISAGGREGATE ============")
-disag_filename = "disag-out-h1-{}-{}epochs.h5".format(meter_key, epochs)
+disag_filename = "disag-out.h5"
 output = HDFDataStore(disag_filename, 'w')
-rnn.disaggregate(test_mains, output, train_meter, sample_period=sample_period)
+gru.disaggregate(test_mains, output, train_meter, sample_period=sample_period)
 output.close()
 
 print("========== RESULTS ============")
