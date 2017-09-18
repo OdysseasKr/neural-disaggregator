@@ -43,7 +43,7 @@ def relative_error_total_energy(pred, ground):
     for chunk in aligned_meters:
         chunk.fillna(0, inplace=True)
         sum_samples += len(chunk)
-        E_pred = sum(chunk.iloc[:,0])/6
+        E_pred = sum(chunk.iloc[:,0])
         E_ground = sum(chunk.iloc[:,1])
 
         chunk_results.append([
@@ -63,7 +63,7 @@ def mean_absolute_error(pred, ground):
     for chunk in aligned_meters:
         chunk.fillna(0, inplace=True)
         sum_samples += len(chunk)
-        total_sum += sum(abs((chunk.iloc[:,0]/6) - chunk.iloc[:,1]))
+        total_sum += sum(abs((chunk.iloc[:,0]) - chunk.iloc[:,1]))
     if sum_samples == 0:
         return None
     else:
