@@ -15,7 +15,7 @@ def recall_precision_accuracy_f1(pred, ground):
     sum_samples = 0.0
     for chunk in aligned_meters:
         sum_samples += len(chunk)
-        pr = np.array([0 if (p/6)<threshold else 1 for p in chunk.iloc[:,0]])
+        pr = np.array([0 if (p)<threshold else 1 for p in chunk.iloc[:,0]])
         gr = np.array([0 if p<threshold else 1 for p in chunk.iloc[:,1]])
 
         tp, tn, fp, fn = tp_tn_fp_fn(pr,gr)
