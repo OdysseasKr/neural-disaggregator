@@ -10,9 +10,9 @@ import metrics
 from rnndisaggregator import RNNDisaggregator
 
 print("========== OPEN DATASETS ============")
-train = DataSet('../../Datasets/REDD/redd.h5')
+train = DataSet('redd.h5')
 train.set_window(end="30-4-2011")
-test = DataSet('../../Datasets/REDD/redd.h5')
+test = DataSet('redd.h5')
 test.set_window(start="30-4-2011")
 
 train_building = 1
