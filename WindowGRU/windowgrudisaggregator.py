@@ -294,10 +294,8 @@ class WindowGRUDisaggregator(Disaggregator):
         indexer = np.arange(self.window_size)[None, :] + np.arange(len(X_batch)-self.window_size+1)[:, None]
         X_batch = X_batch[indexer]
         X_batch = np.reshape(X_batch, (X_batch.shape[0],X_batch.shape[1],1))
-        import pdb;pdb.set_trace()
 
         pred = self.model.predict(X_batch, batch_size=128)
-        pdb.set_trace()
         pred = np.reshape(pred, (len(pred)))
         column = pd.Series(pred, index=mains.index[self.window_size-1:Y_len], name=0)
 
