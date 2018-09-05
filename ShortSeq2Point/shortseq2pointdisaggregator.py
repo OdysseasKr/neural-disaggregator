@@ -372,6 +372,8 @@ class ShortSeq2PointDisaggregator(Disaggregator):
         model.add(Dropout(0.5))
         model.add(Conv1D(50, 5, activation='relu', padding="same", strides=1))
         model.add(Dropout(0.5))
+        model.add(Conv1D(50, 5, activation='relu', padding="same", strides=1))
+        model.add(Dropout(0.5))        
         # Fully Connected Layers
         model.add(Flatten())
         model.add(Dense(1024, activation='relu'))
