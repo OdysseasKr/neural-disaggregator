@@ -165,7 +165,7 @@ class DAEDisaggregator(Disaggregator):
 
         for e in range(epochs):
             print(e)
-            batch_indexes = range(min(num_of_batches))
+            batch_indexes = list(range(min(num_of_batches)))
             random.shuffle(batch_indexes)
 
             for bi, b in enumerate(batch_indexes):

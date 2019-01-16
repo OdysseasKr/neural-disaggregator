@@ -175,7 +175,7 @@ class RNNDisaggregator(Disaggregator):
 
         for e in range(epochs): # Iterate for every epoch
             print(e)
-            batch_indexes = range(min(num_of_batches))
+            batch_indexes = list(range(min(num_of_batches)))
             random.shuffle(batch_indexes)
 
             for bi, b in enumerate(batch_indexes): # Iterate for every batch
