@@ -177,7 +177,7 @@ class DAEDisaggregator(Disaggregator):
 
                 for i in range(num_meters):
                     mainpart = mainchunks[i]
-                    meterpart = mainchunks[i]
+                    meterpart = meterchunks[i]
                     mainpart = mainpart[b*batch_size*s:(b+1)*batch_size*s]
                     meterpart = meterpart[b*batch_size*s:(b+1)*batch_size*s]
                     X = np.reshape(mainpart, (batch_size, s, 1))

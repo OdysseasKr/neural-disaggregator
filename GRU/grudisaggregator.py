@@ -187,7 +187,7 @@ class GRUDisaggregator(Disaggregator):
                 # Create a batch out of data from all buildings
                 for i in range(num_meters):
                     mainpart = mainchunks[i]
-                    meterpart = mainchunks[i]
+                    meterpart = meterchunks[i]
                     mainpart = mainpart[b*batch_size:(b+1)*batch_size]
                     meterpart = meterpart[b*batch_size:(b+1)*batch_size]
                     X = np.reshape(mainpart, (batch_size, 1, 1))
