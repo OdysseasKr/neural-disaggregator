@@ -1,11 +1,10 @@
 from __future__ import print_function, division
-from warnings import warn, filterwarnings
+import random
+import sys
 
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 
-import random
-import sys
 import pandas as pd
 import numpy as np
 import h5py
@@ -17,7 +16,7 @@ from keras.utils import plot_model
 
 from nilmtk.utils import find_nearest
 from nilmtk.feature_detectors import cluster
-from nilmtk.disaggregate import Disaggregator
+from nilmtk.legacy.disaggregate import Disaggregator
 from nilmtk.datastore import HDFDataStore
 
 class ShortSeq2PointDisaggregator(Disaggregator):
@@ -373,7 +372,7 @@ class ShortSeq2PointDisaggregator(Disaggregator):
         model.add(Conv1D(50, 5, activation='relu', padding="same", strides=1))
         model.add(Dropout(0.5))
         model.add(Conv1D(50, 5, activation='relu', padding="same", strides=1))
-        model.add(Dropout(0.5))        
+        model.add(Dropout(0.5))
         # Fully Connected Layers
         model.add(Flatten())
         model.add(Dense(1024, activation='relu'))

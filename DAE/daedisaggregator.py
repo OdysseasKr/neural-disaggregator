@@ -1,5 +1,6 @@
 from __future__ import print_function, division
-from warnings import warn, filterwarnings
+import random
+import sys
 
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
@@ -7,8 +8,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import h5py
-import random
-import sys
 
 from keras.models import load_model
 from keras.models import Sequential
@@ -17,7 +16,7 @@ from keras.utils import plot_model
 
 from nilmtk.utils import find_nearest
 from nilmtk.feature_detectors import cluster
-from nilmtk.disaggregate import Disaggregator
+from nilmtk.legacy.disaggregate import Disaggregator
 from nilmtk.datastore import HDFDataStore
 
 class DAEDisaggregator(Disaggregator):

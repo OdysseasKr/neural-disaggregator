@@ -1,11 +1,10 @@
 from __future__ import print_function, division
-from warnings import warn, filterwarnings
+import random
+import sys
 
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 
-import random
-import sys
 import pandas as pd
 import numpy as np
 import h5py
@@ -17,7 +16,7 @@ from keras.utils import plot_model
 
 from nilmtk.utils import find_nearest
 from nilmtk.feature_detectors import cluster
-from nilmtk.disaggregate import Disaggregator
+from nilmtk.legacy.disaggregate import Disaggregator
 from nilmtk.datastore import HDFDataStore
 
 class WindowGRUDisaggregator(Disaggregator):
