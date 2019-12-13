@@ -112,7 +112,7 @@ class DAEDisaggregator(Disaggregator):
         self.model.fit(X_batch, Y_batch, batch_size=batch_size, epochs=epochs, shuffle=True)
 
     def train_across_buildings(self, mainlist, meterlist, epochs=1, batch_size=128, **load_kwargs):
-        assert(len(mainlist) == len(meterlist), "Number of main and meter channels should be equal")
+        assert len(mainlist) == len(meterlist), "Number of main and meter channels should be equal"
         num_meters = len(mainlist)
 
         mainps = [None] * num_meters

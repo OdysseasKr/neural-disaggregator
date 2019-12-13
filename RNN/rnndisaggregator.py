@@ -106,7 +106,7 @@ class RNNDisaggregator(Disaggregator):
         **load_kwargs : keyword arguments passed to `meter.power_series()`
         '''
 
-        assert(len(mainlist) == len(meterlist), "Number of main and meter channels should be equal")
+        assert len(mainlist) == len(meterlist), "Number of main and meter channels should be equal"
         num_meters = len(mainlist)
 
         mainps = [None] * num_meters
